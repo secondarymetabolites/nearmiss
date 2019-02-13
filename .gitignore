@@ -1,0 +1,16 @@
+*.so
+build/
+*.swp
+.eggs
+*.pyc
+cover/
+.coverage
+*~
+__pycache__
+.cache
+.mypy_cache
+.pytest_cache
+**/.ropeproject/*
+pip-delete-this-directory.txt
+pip-egg-info/*
+*egg-info/
