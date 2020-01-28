@@ -10,7 +10,6 @@ install_requires = [
 tests_require = [
     'pytest >= 3.3.0',
     'coverage',
-    'pylint',
 ]
 
 
