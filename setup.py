@@ -64,6 +64,7 @@ setup(
                     'source/sais.c',
                     'source/tree.c'
                   ],
+                  include_dirs=['source'],
                   extra_compile_args=["-fopenmp"],
                   extra_link_args=["-fopenmp"])
     ]
