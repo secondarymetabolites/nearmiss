@@ -43,10 +43,15 @@ variable `OMP_NUM_THREADS` to the number of desired threads.
 
 ## Installing
 
-### from source
+### Non-python dependencies
 
 nearmiss uses OpenMP to drastically speed up mismatch searching on many anchors.
 To install that on Debian/Ubuntu systems, run `sudo apt-get install libomp5`.
 
-Once installed, run
-`pip install .` in the source directory.
+### with pip
+
+`pip install nearmiss`
+
+### from source
+
+`pip install .` in the source directory
