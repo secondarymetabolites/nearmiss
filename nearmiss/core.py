@@ -8,7 +8,10 @@ The core parts of nearmiss, mostly wrapping the C extension (_core).
 from typing import Dict, List, Tuple
 
 # pylint doesn't seem to handle C extensions nicely
-from ._core import Tree as _Tree  # pylint: disable=no-name-in-module
+try:
+    from ._core import Tree as _Tree  # pylint: disable=no-name-in-module
+except ImportError:
+    raise ImportError("cannot import _core, rebuild or install libgomp")
 
 
 def check_area(area: Tuple[int, int]) -> bool:
