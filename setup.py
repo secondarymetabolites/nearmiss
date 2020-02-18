@@ -35,7 +35,7 @@ with open(os.path.join(os.path.abspath(os.path.dirname(__file__)), 'README.md'),
 setup(
     name="nearmiss",
     python_requires='>=3.5',
-    version="0.1.2",
+    version="0.1.3",
     packages=find_packages(exclude=["tests"]),
     author='Simon Shaw',
     author_email='packaging@secondarymetabolites.org',
