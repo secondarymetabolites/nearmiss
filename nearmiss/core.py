@@ -64,6 +64,7 @@ class Searcher(_Tree):
 
     def find_repeat_counts(self, target: str, before_window: Tuple[int, int],
                            max_distance: int = 2, other_text: str = None,
+                           threads: int = 0,
                           ) -> Dict[int, List[int]]:
         """ Finds matches and inexact (but both case sensitive) matches of the
             text in the specified window around anchors.
@@ -79,6 +80,9 @@ class Searcher(_Tree):
                                e.g. (-10, -5)
                 other_text: optional other text to search for mismatches in,
                             instead of the construction text
+                threads: number of threads to use while searching, if less than
+                         1 and environment variable OMP_NUM_THREADS is not set,
+                         one thread per core will be used
 
             Returns:
                 a dictionary mapping
@@ -99,5 +103,5 @@ class Searcher(_Tree):
         anchors = self.find_anchors(target)
         hits = super().find_repeat_counts(anchors, target, max_distance,
                                           before_window[0], before_window[1],
-                                          other_text)
+                                          other_text, threads)
         return dict(hits)

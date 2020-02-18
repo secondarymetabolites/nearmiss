@@ -186,7 +186,7 @@ find_inexact(SuffixArray const* tree, int anchorStart, int downstreamStart, int 
 
 PyObject*
 find_mismatches(Tree const* tree, PyObject *anchors, char *anchorText, int maxDistance,
-        int downstreamStart, int downstreamEnd, SuffixArray *other)
+        int downstreamStart, int downstreamEnd, SuffixArray *other, int threads)
 {
 
     /* for locking around PyObject functions that (de)allocate memory */
@@ -196,6 +196,9 @@ find_mismatches(Tree const* tree, PyObject *anchors, char *anchorText, int maxDi
     int i = 0;
 
     omp_init_lock(&gilReplacement);
+    if (threads > 0) {
+        omp_set_num_threads(threads);
+    }
 
 #pragma omp parallel for shared(anchors, list)
     for (i = 0; i < PyObject_Length(anchors); i++) {
@@ -245,14 +248,15 @@ Tree_find_repeat_counts(Tree* tree, PyObject* args)
     int downstreamEnd = 0;
     int maxNumChanges = 0;
     char *text = NULL;
+    int threads = 0;
     SuffixArray other;
 
-    if (argCount != 6) {  /* anchors, anchor string, max_distance, downstream_start, downsteam_end, text */
-        PyErr_Format(PyExc_TypeError, "expected 8 arguments, got %d", argCount);
+    if (argCount != 7) {  /* anchors, anchor string, max_distance, downstream_start, downsteam_end, text */
+        PyErr_Format(PyExc_TypeError, "expected 7 arguments, got %d", argCount);
         return NULL;
     }
 
-    if (!PyArg_ParseTuple(args, "Osiiis", &anchors, &anchorText, &maxNumChanges, &downstreamStart, &downstreamEnd, &text)) {
+    if (!PyArg_ParseTuple(args, "Osiiisi", &anchors, &anchorText, &maxNumChanges, &downstreamStart, &downstreamEnd, &text, &threads)) {
         PyErr_SetString(PyExc_TypeError, "expected other types");
         return NULL;
     }
@@ -273,7 +277,7 @@ Tree_find_repeat_counts(Tree* tree, PyObject* args)
     other._suffixArray = (int *) malloc((size_t) other._length * sizeof(int));
     sais((const unsigned char *) other._text, other._suffixArray, other._length);
 
-    return find_mismatches(tree, anchors, anchorText, maxNumChanges, downstreamStart, downstreamEnd, &other);
+    return find_mismatches(tree, anchors, anchorText, maxNumChanges, downstreamStart, downstreamEnd, &other, threads);
 }
 
 
