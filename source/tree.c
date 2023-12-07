@@ -188,53 +188,65 @@ PyObject*
 find_mismatches(Tree const* tree, PyObject *anchors, char *anchorText, int maxDistance,
         int downstreamStart, int downstreamEnd, SuffixArray *other, int threads)
 {
-
-    /* for locking around PyObject functions that (de)allocate memory */
-    omp_lock_t gilReplacement;
+    /* avoid all python object access in the threaded block due to threading and python internals
+       - in 3.11 and earlier, using omp locks was sufficient
+       - in 3.12 just omp locks was insufficient and caused segfaults, and python
+         GIL workarounds either still segfaulted or caused deadlocks
+     */
+    /* start by converting all python objects or extracting the relevant information */
     PyObject *list = PyList_New(0);
     const size_t size = sizeof(int) * (maxDistance + 1);
     int i = 0;
+    int anchorCount = PyObject_Length(anchors);
+    long *anchorStarts = malloc(sizeof(long) * anchorCount);
+    int **allCounts = malloc(sizeof(int*) * anchorCount);
+    for (i = 0; i < anchorCount; i++) {
+        anchorStarts[i] = PyLong_AsLong(PyList_GetItem(anchors, i));
+        allCounts[i] = malloc(size);
+    }
+    char *sequence = tree->data._text;
 
-    omp_init_lock(&gilReplacement);
     if (threads > 0) {
         omp_set_num_threads(threads);
     }
-
-#pragma omp parallel for shared(anchors, list)
-    for (i = 0; i < PyObject_Length(anchors); i++) {
-        long anchorStart = PyLong_AsLong(PyList_GetItem(anchors, i));
-        int *counts = NULL;
+    /* get the heavy work done in threads */
+#pragma omp parallel for
+    for (i = 0; i < anchorCount; i++) {
+        long anchorStart = anchorStarts[i];
+        int *counts = allCounts[i];
         char *query = NULL;
-        int distance = 0;
-        PyObject* anchorResult = NULL;
         /* skip any anchor that would read off the end of the text */
         if (anchorStart < -downstreamStart) {
             continue;
         }
-        counts = malloc(size);
         memset(counts, 0, size);
-        query = strndup(tree->data._text + (anchorStart + downstreamStart), downstreamEnd - downstreamStart);
-
-        omp_set_lock(&gilReplacement);
-        anchorResult = PyList_New(maxDistance + 1);
-        omp_unset_lock(&gilReplacement);
+        query = strndup(sequence + (anchorStart + downstreamStart), downstreamEnd - downstreamStart);
 
         find_inexact(other, anchorStart, downstreamStart, downstreamEnd, maxDistance, 0, counts, query, 0, anchorText);
 
-        omp_set_lock(&gilReplacement);
+        free(query);
+    }
+    /* now that the threaded section is complete, build/update all the relevant python objects
+       this is slower than doing it in the threaded section, but much safer until
+       those threading issues are resolved
+     */
+    for (i = 0; i < anchorCount; i++) {
+        int distance = 0;
+        int *counts = allCounts[i];
+        PyObject* anchorResult = PyList_New(maxDistance + 1);
         for (distance = 0; distance < maxDistance + 1; distance++) {
             PyList_SetItem(anchorResult, distance, PyLong_FromLong((long) counts[distance]));
         }
+        free(counts);
+        allCounts[i] = NULL;
         /* NN => build a tuple of two objects:
             the first being the anchor object
             the second being the list of hit counts
          */
         PyList_Append(list, Py_BuildValue("NN", PyList_GetItem(anchors, i), anchorResult));
-        omp_unset_lock(&gilReplacement);
-        free(query);
-        free(counts);
     }
-    omp_destroy_lock(&gilReplacement);
+    free(anchorStarts);
+    free(allCounts);
     return list;
 }
 
